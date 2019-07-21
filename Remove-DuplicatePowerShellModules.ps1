@@ -1,25 +1,51 @@
 ## Credit for the original version goes to: http://sharepointjack.com/2017/powershell-script-to-remove-duplicate-old-modules/
-Write-Host "this will remove all old versions of installed modules"
-Write-Host "be sure to run this as an admin" -foregroundcolor yellow
-Write-Host "(You can update all your Azure RM modules with update-module Azurerm -force)"
+#Requires -RunAsAdministrator
 
-$mods = Get-InstalledModule
+$InformationPreference = 'Continue'
 
-foreach ($Mod in $mods) {
-    Write-Host "Checking $($mod.name)"
-    $latest = Get-InstalledModule $mod.name
-    $specificmods = Get-InstalledModule $mod.name -allversions
-    Write-Host "$($specificmods.count) versions of this module found [ $($mod.name) ]"
+Write-Information -MessageData "Getting installed modules..."
+[System.Collections.ArrayList]$GetInstalledModules = Get-InstalledModule
 
-    foreach ($sm in $specificmods) {
-        if ($sm.version -ne $latest.version) {
-            Write-Host "uninstalling $($sm.name) - $($sm.version) [latest is $($latest.version)]"
-            $sm | Uninstall-Module -force
-            Write-Host "done uninstalling $($sm.name) - $($sm.version)"
-            Write-Host "    --------"
+[System.Int32]$c = 1
+[System.Int32]$InstalledModuleCount = $GetInstalledModules.Count
+
+Write-Information -MessageData "Entering loop..."
+foreach ($InstalledModule in $GetInstalledModules) {
+    [System.String]$ModuleName = $InstalledModule.Name
+    Write-Information -MessageData "Working on module: '$ModuleName'. '$c' of '$InstalledModuleCount' modules to check."
+
+    Write-Information -MessageData "Getting all installed versions of: '$ModuleName'."
+    $GetAllVersionsOfModule = Get-InstalledModule $ModuleName -AllVersions | Sort-Object -Property Version -Descending
+    [System.Int32]$InstalledVersionCount = $GetAllVersionsOfModule.Count
+
+    if ($InstalledVersionCount -gt 1) {
+        Write-Information -MessageData "There are: '$InstalledVersionCount' installed versions of this module."
+
+        [System.String]$MostRecentVersion = $GetAllVersionsOfModule[0].Version
+        [System.Collections.ArrayList]$OlderVersions = $GetAllVersionsOfModule | Where-Object -FilterScript {$_.Version -lt $MostRecentVersion}
+        [System.Int32]$OlderVersionCount = $OlderVersions.Count
+
+        Write-Information -MessageData "The most recent version of this module is: '$MostRecentVersion'. Will remove: '$OlderVersionCount' older versions."
+
+        [System.Int32]$j = 1
+        foreach ($OlderVersion in $OlderVersions) {
+            [System.String]$OlderVersionName = $OlderVersion.Name
+            [System.String]$OlderVersionVersion = $OlderVersion.Version
+            Write-Information -MessageData "Uninstalling: '$OlderVersionName' with version: '$OlderVersionVersion'."
+
+            $OlderVersion | Uninstall-Module -Force
+
+            Write-Information -MessageData "Uninstalled. Moving on."
+
+            $j++
         }
 
     }
-    Write-Host "------------------------"
+    else {
+        Write-Information -MessageData "Since there is only one installed version, not checking for duplicates."
+    }
+
+    $c++
 }
-Write-Host "done"
+
+Write-Information -MessageData "All duplicate & older versions uninstalled. Exiting."
