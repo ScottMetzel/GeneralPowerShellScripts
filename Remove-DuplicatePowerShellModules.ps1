@@ -13,47 +13,53 @@ Write-Information -MessageData "Getting installed modules..."
 Write-Information -MessageData "Entering loop..."
 foreach ($InstalledModule in $GetInstalledModules) {
     [System.String]$ModuleName = $InstalledModule.Name
-    [System.Version]$MostRecentVersion = $InstalledModule.Version
-    Write-Information -MessageData "Working on module: '$ModuleName'. '$c' of '$InstalledModuleCount' modules to check."
 
-    Write-Information -MessageData "Getting all installed versions of: '$ModuleName'."
-    $GetAllVersionsOfModule = Get-InstalledModule $ModuleName -AllVersions | Sort-Object -Property Version -Descending
-    [System.Int32]$InstalledVersionCount = $GetAllVersionsOfModule.Count
+     Write-Information -MessageData "Working on module: '$ModuleName'. '$c' of '$InstalledModuleCount' modules to check."
+    if ($InstalledModule.Version -is [System.Version]) {
+        [System.Version]$MostRecentVersion = $InstalledModule.Version
 
-    if ($InstalledVersionCount -gt 1) {
 
-        Write-Information -MessageData "There are: '$InstalledVersionCount' installed versions of this module and the most recent version is: '$MostRecentVersion'."
+        Write-Information -MessageData "Getting all installed versions of: '$ModuleName'."
+        $GetAllVersionsOfModule = Get-InstalledModule $ModuleName -AllVersions | Sort-Object -Property Version -Descending
+        [System.Int32]$InstalledVersionCount = $GetAllVersionsOfModule.Count
 
-        [System.Collections.ArrayList]$OlderVersions = @()
-        $GetAllVersionsOfModule | Foreach-Object -Process {
-            [System.Version]$ThisVersion = $_.Version
-            if ($ThisVersion -lt $MostRecentVersion) {
-                $OlderVersions.Add($_) | Out-Null
+        if ($InstalledVersionCount -gt 1) {
+
+            Write-Information -MessageData "There are: '$InstalledVersionCount' installed versions of this module and the most recent version is: '$MostRecentVersion'."
+
+            [System.Collections.ArrayList]$OlderVersions = @()
+            $GetAllVersionsOfModule | Foreach-Object -Process {
+                [System.Version]$ThisVersion = $_.Version
+                if ($ThisVersion -lt $MostRecentVersion) {
+                    $OlderVersions.Add($_) | Out-Null
+                }
             }
+
+            [System.Int32]$OlderVersionCount = $OlderVersions.Count
+
+            Write-Information -MessageData "Will remove: '$OlderVersionCount' older versions."
+
+            [System.Int32]$j = 1
+            foreach ($OlderVersion in $OlderVersions) {
+                [System.String]$OlderVersionName = $OlderVersion.Name
+                [System.String]$OlderVersionVersion = $OlderVersion.Version
+                Write-Information -MessageData "Uninstalling: '$OlderVersionName' with version: '$OlderVersionVersion'."
+
+                $OlderVersion | Uninstall-Module -Force
+
+                Write-Information -MessageData "Uninstalled. Moving on."
+
+                $j++
+            }
+
         }
-
-        [System.Int32]$OlderVersionCount = $OlderVersions.Count
-
-        Write-Information -MessageData "Will remove: '$OlderVersionCount' older versions."
-
-        [System.Int32]$j = 1
-        foreach ($OlderVersion in $OlderVersions) {
-            [System.String]$OlderVersionName = $OlderVersion.Name
-            [System.String]$OlderVersionVersion = $OlderVersion.Version
-            Write-Information -MessageData "Uninstalling: '$OlderVersionName' with version: '$OlderVersionVersion'."
-
-            $OlderVersion | Uninstall-Module -Force
-
-            Write-Information -MessageData "Uninstalled. Moving on."
-
-            $j++
+        else {
+            Write-Information -MessageData "Since there is only one installed version, not checking for duplicates."
         }
-
     }
     else {
-        Write-Information -MessageData "Since there is only one installed version, not checking for duplicates."
+        Write-Warning -Message "Version property for module: '$ModuleName' is not in a comparable format. Moving on."
     }
-
     $c++
 }
 
