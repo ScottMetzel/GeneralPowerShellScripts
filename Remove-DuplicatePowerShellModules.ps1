@@ -13,6 +13,7 @@ Write-Information -MessageData "Getting installed modules..."
 Write-Information -MessageData "Entering loop..."
 foreach ($InstalledModule in $GetInstalledModules) {
     [System.String]$ModuleName = $InstalledModule.Name
+    [System.Version]$MostRecentVersion = $InstalledModule.Version
     Write-Information -MessageData "Working on module: '$ModuleName'. '$c' of '$InstalledModuleCount' modules to check."
 
     Write-Information -MessageData "Getting all installed versions of: '$ModuleName'."
@@ -20,12 +21,13 @@ foreach ($InstalledModule in $GetInstalledModules) {
     [System.Int32]$InstalledVersionCount = $GetAllVersionsOfModule.Count
 
     if ($InstalledVersionCount -gt 1) {
-        [System.String]$MostRecentVersion = $GetAllVersionsOfModule[0].Version
+
         Write-Information -MessageData "There are: '$InstalledVersionCount' installed versions of this module and the most recent version is: '$MostRecentVersion'."
 
         [System.Collections.ArrayList]$OlderVersions = @()
         $GetAllVersionsOfModule | Foreach-Object -Process {
-            if ($_.Version -lt $MostRecentVersion) {
+            [System.Version]$ThisVersion = $_.Version
+            if ($ThisVersion -lt $MostRecentVersion) {
                 $OlderVersions.Add($_) | Out-Null
             }
         }
