@@ -2,6 +2,7 @@
 #Requires -RunAsAdministrator
 
 $InformationPreference = 'Continue'
+$ErrorActionPreference = 'Stop'
 
 Write-Information -MessageData "Getting installed modules..."
 [System.Collections.ArrayList]$GetInstalledModules = Get-InstalledModule
@@ -19,13 +20,19 @@ foreach ($InstalledModule in $GetInstalledModules) {
     [System.Int32]$InstalledVersionCount = $GetAllVersionsOfModule.Count
 
     if ($InstalledVersionCount -gt 1) {
-        Write-Information -MessageData "There are: '$InstalledVersionCount' installed versions of this module."
-
         [System.String]$MostRecentVersion = $GetAllVersionsOfModule[0].Version
-        [System.Collections.ArrayList]$OlderVersions = $GetAllVersionsOfModule | Where-Object -FilterScript {$_.Version -lt $MostRecentVersion}
+        Write-Information -MessageData "There are: '$InstalledVersionCount' installed versions of this module and the most recent version is: '$MostRecentVersion'."
+
+        [System.Collections.ArrayList]$OlderVersions = @()
+        $GetAllVersionsOfModule | Foreach-Object -Process {
+            if ($_.Version -lt $MostRecentVersion) {
+                $OlderVersions.Add($_) | Out-Null
+            }
+        }
+
         [System.Int32]$OlderVersionCount = $OlderVersions.Count
 
-        Write-Information -MessageData "The most recent version of this module is: '$MostRecentVersion'. Will remove: '$OlderVersionCount' older versions."
+        Write-Information -MessageData "Will remove: '$OlderVersionCount' older versions."
 
         [System.Int32]$j = 1
         foreach ($OlderVersion in $OlderVersions) {
