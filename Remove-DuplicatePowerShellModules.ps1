@@ -15,7 +15,7 @@ foreach ($InstalledModule in $GetInstalledModules) {
     [System.String]$ModuleName = $InstalledModule.Name
 
      Write-Information -MessageData "Working on module: '$ModuleName'. '$c' of '$InstalledModuleCount' modules to check."
-    if ($InstalledModule.Version -is [System.Version]) {
+    if ($InstalledModule.Version -notmatch '(-)|(?i)([A-Z]{1,})') {
         [System.Version]$MostRecentVersion = $InstalledModule.Version
 
 
