@@ -1,10 +1,10 @@
 #Requires -Modules @{ ModuleName="Az.Network"; ModuleVersion="4.0.0.0"}, @{ ModuleName="Az.Resources"; ModuleVersion="3.0.0.0"}
 <#
     .SYNOPSIS
-    This script creates a private endpoitn for a resource.
+    This script creates a private endpoint for a resource.
 
     .DESCRIPTION
-    This script creates a private endpoitn for a resource.
+    This script creates a private endpoint for a resource.
 
     .NOTES
     ###################################################################################################################
