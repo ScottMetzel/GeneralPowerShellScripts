@@ -35,14 +35,18 @@
 #>
 
 param (
-    [System.String]$VirtualNetworkResourceGroupName,
-    [System.String]$VirtualNetworkName,
+    [System.String]$VirtualNetworkResourceID,
     [System.String]$VirtualNetworkSubnetName,
     [System.String]$TargetResourceID
 )
 ## Get information stream messages to show, and make sure we stop on error
 $InformationPreference = "Continue"
 $ErrorActionPreference = "Stop"
+
+Write-Information -MessageData "Deriving Virtual Network name and resource group name."
+[System.Collections.ArrayList]$VirtualNetworkResourceIDArray = $VirtualNetworkResourceID -split "/"
+[System.String]$VirtualNetworkResourceGroupName = $VirtualNetworkResourceIDArray[4]
+[System.String]$VirtualNetworkName = $VirtualNetworkResourceIDArray[-1]
 
 ## Parameter splat for the get virtual network cmdlet
 [System.Collections.Hashtable]$GetAzVNETSplat = @{
