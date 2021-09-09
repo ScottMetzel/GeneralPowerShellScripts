@@ -25,7 +25,7 @@
     https://docs.microsoft.com/en-us/azure/private-link/disable-private-endpoint-network-policy
 
     .EXAMPLE
-    New-AzPrivateEndpointForResource.ps1 -VirtualNetworkName "VNETHub01" -VirtualNetworkSubnetName "StoragePE01" -TargetResourceID ""
+    New-AzPrivateEndpointForResource.ps1 Set-AzPrivateEndpointNSGSupport.ps1 -VirtualNetworResourceID "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/Dev-RG-NetworkInfrastructure-01/providers/Microsoft.Network/virtualNetworks/Dev-VNET-Hub-01" -VirtualNetworkSubnetName "StoragePE01" -TargetResourceID "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/Dev-RG-ActiveDirectoryDomainServices-01/providers/Microsoft.KeyVault/vaults/Dev-KV-ADDS-01"
 
     .INPUTS
     None. This runbook does not accept inputs from the pipeline.

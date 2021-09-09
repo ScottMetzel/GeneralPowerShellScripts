@@ -12,7 +12,7 @@
     Created On: September 9, 2021
     Author: Scott Metzel
     Organization: -
-    Filename: New-AzPrivateEndPointWithNSGs.ps1
+    Filename: Set-AzPrivateEndpointNSGSupport.ps1
 
     Version History:
     ## Version ##   ## Edited By ## ## Date ##          ## Notes ######################################################
@@ -29,7 +29,7 @@
     https://docs.microsoft.com/en-us/azure/private-link/disable-private-endpoint-network-policy
 
     .EXAMPLE
-    New-AzPrivateEndPointWithNSGs.ps1 -VirtualNetworkName "VNETHub01" -VirtualNetworkSubnetName "StoragePE01" -TargetResourceID ""
+    Set-AzPrivateEndpointNSGSupport.ps1 -VirtualNetworResourceID "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/Dev-RG-NetworkInfrastructure-01/providers/Microsoft.Network/virtualNetworks/Dev-VNET-Hub-01" -VirtualNetworkSubnetName "StoragePE01" -Operation "Enable"
 
     .INPUTS
     None. This runbook does not accept inputs from the pipeline.
