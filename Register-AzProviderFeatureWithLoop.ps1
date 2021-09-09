@@ -1,6 +1,48 @@
+#Requires -Modules @{ ModuleName="Az.Resources"; ModuleVersion="3.0.0.0"}
+<#
+    .SYNOPSIS
+    This script registers for a new Resource Provider feature
+
+    .DESCRIPTION
+    This script registers for a new Resource Provider feature, which is typically in public preview
+
+    .NOTES
+    ###################################################################################################################
+    Created With: Microsoft Visual Studio Code
+    Created On: September 9, 2021
+    Author: Scott Metzel
+    Organization: -
+    Filename: Register-AzProviderFeatureWithLoop.ps1
+
+    Version History:
+    ## Version ##   ## Edited By ## ## Date ##          ## Notes ######################################################
+    0.1             Scott Metzel    September 9, 2021   Initial Version based on prior script
+    ###################################################################################################################
+
+    .EXAMPLE
+    Register-AzProviderFeatureWithLoop.ps1 -ProviderNameSpace "Microsoft.Network" -FeatureName "AllowPrivateEndpointNSG"
+
+    .INPUTS
+    None. This runbook does not accept inputs from the pipeline.
+
+    .OUTPUTS
+    None.
+#>
 [CmdletBinding()]
 param (
+    [Parameter(
+        Mandatory = $false
+    )]
+    [ValidateScript(
+        {
+            ($_ -split "\.").Count -eq 2
+        }
+    )]
     [System.String]$ProviderNameSpace = "Microsoft.Network",
+    [Parameter(
+        Mandatory = $false
+    )]
+    [ValidateNotNullOrEmpty()]
     [System.String]$FeatureName = "AllowPrivateEndpointNSG"
 )
 ## Get information stream messages to show, and make sure we stop on error
