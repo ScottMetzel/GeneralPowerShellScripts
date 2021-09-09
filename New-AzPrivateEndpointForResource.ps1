@@ -35,8 +35,28 @@
 #>
 
 param (
+    [Parameter(
+        Mandatory = $true
+    )]
+    [ValidateScript(
+        {
+            (($_ -split "/").Count -eq 9) -and (($_ -split "/")[1] -eq "subscriptions") -and ([System.Guid]::TryParse(($_ -split "/")[2], [System.Management.Automation.PSReference]([System.Guid]::empty))) -and (($_ -split "/")[3] -eq "resourceGroups") -and (($_ -split "/")[5] -eq "providers") -and (($_ -split "/")[6] -eq "Microsoft.Network") -and (($_ -split "/")[7] -eq "virtualNetworks")
+        }
+    )]
     [System.String]$VirtualNetworkResourceID,
+    [Parameter(
+        Mandatory = $true
+    )]
+    [ValidateNotNullOrEmpty()]
     [System.String]$VirtualNetworkSubnetName,
+    [Parameter(
+        Mandatory = $true
+    )]
+    [ValidateScript(
+        {
+            (($_ -split "/").Count -eq 9) -and (($_ -split "/")[1] -eq "subscriptions") -and ([System.Guid]::TryParse(($_ -split "/")[2], [System.Management.Automation.PSReference]([System.Guid]::empty))) -and (($_ -split "/")[3] -eq "resourceGroups") -and (($_ -split "/")[5] -eq "providers")
+        }
+    )]
     [System.String]$TargetResourceID
 )
 ## Get information stream messages to show, and make sure we stop on error

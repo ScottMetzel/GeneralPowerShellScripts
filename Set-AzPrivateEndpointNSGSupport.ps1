@@ -39,14 +39,39 @@
 #>
 
 param (
-    [System.String]$VirtualNetworkResourceGroupName,
-    [System.String]$VirtualNetworkName,
+    [Parameter(
+        Mandatory = $true
+    )]
+    [ValidateScript(
+        {
+            (($_ -split "/").Count -eq 9) -and (($_ -split "/")[1] -eq "subscriptions") -and ([System.Guid]::TryParse(($_ -split "/")[2], [System.Management.Automation.PSReference]([System.Guid]::empty))) -and (($_ -split "/")[3] -eq "resourceGroups") -and (($_ -split "/")[5] -eq "providers") -and (($_ -split "/")[6] -eq "Microsoft.Network") -and (($_ -split "/")[7] -eq "virtualNetworks")
+        }
+    )]
+    [System.String]$VirtualNetworkResourceID,
+    [Parameter(
+        Mandatory = $true
+    )]
+    [ValidateNotNullOrEmpty()]
     [System.String]$VirtualNetworkSubnetName,
+    [Parameter(
+        Mandatory = $false
+    )]
+    [ValidateSet(
+        "Disable",
+        "Enable",
+        IgnoreCase = $true
+    )]
     [System.String]$Operation = "Enable"
 )
 ## Get information stream messages to show, and make sure we stop on error
 $InformationPreference = "Continue"
 $ErrorActionPreference = "Stop"
+
+# Get the resource group name and name of the virtual network from the resource ID to reduce parameters / complexity
+Write-Information -MessageData "Deriving Virtual Network name and resource group name."
+[System.Collections.ArrayList]$VirtualNetworkResourceIDArray = $VirtualNetworkResourceID -split "/"
+[System.String]$VirtualNetworkResourceGroupName = $VirtualNetworkResourceIDArray[4]
+[System.String]$VirtualNetworkName = $VirtualNetworkResourceIDArray[-1]
 
 ## Parameter splat for the get virtual network cmdlet
 [System.Collections.Hashtable]$GetAzVNETSplat = @{
