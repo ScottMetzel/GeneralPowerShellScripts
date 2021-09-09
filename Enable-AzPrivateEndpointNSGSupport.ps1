@@ -41,7 +41,8 @@
 param (
     [System.String]$VirtualNetworkResourceGroupName,
     [System.String]$VirtualNetworkName,
-    [System.String]$VirtualNetworkSubnetName
+    [System.String]$VirtualNetworkSubnetName,
+    [System.String]$Operation = "Enable"
 )
 ## Get information stream messages to show, and make sure we stop on error
 $InformationPreference = "Continue"
@@ -59,9 +60,23 @@ $GetAzVNET = Get-AzVirtualNetwork @GetAzVNETSplat
 
 ## Enable Network Policies on all subnets in the Virtual Network
 ### Get the subnets where the PrivateEndpointNetworkPolicies property exists and where the subnet name matches the $VirtualNetworkSubnetName variable, then enable PrivateEndpoint Network Policies on the subnet object. The changes haven't been committed to the virtual network yet.
-Write-Information -MessageData "Modifying subnet object to enable private endpoint network policies"
-($GetAzVNET.Subnets | Where-Object -FilterScript { ($_.Psobject.Properties.Name -eq 'PrivateEndpointNetworkPolicies') -and ($_.Name -eq $VirtualNetworkSubnetName) }) | ForEach-Object -Process {
-    $_.PrivateEndpointNetworkPolicies = "Enabled"
+
+switch ($Operation) {
+    "Disable" {
+        Write-Information -MessageData "Modifying subnet object to disable private endpoint network policies"
+        ($GetAzVNET.Subnets | Where-Object -FilterScript { ($_.Psobject.Properties.Name -eq 'PrivateEndpointNetworkPolicies') -and ($_.Name -eq $VirtualNetworkSubnetName) }) | ForEach-Object -Process {
+            $_.PrivateEndpointNetworkPolicies = "Disabled"
+        }
+    }
+    "Enable" {
+        Write-Information -MessageData "Modifying subnet object to enable private endpoint network policies"
+        ($GetAzVNET.Subnets | Where-Object -FilterScript { ($_.Psobject.Properties.Name -eq 'PrivateEndpointNetworkPolicies') -and ($_.Name -eq $VirtualNetworkSubnetName) }) | ForEach-Object -Process {
+            $_.PrivateEndpointNetworkPolicies = "Enabled"
+        }
+    }
+    default {
+        Write-Error -Message "An unknown option was chosen"
+    }
 }
 
 ### Now commit the changes
