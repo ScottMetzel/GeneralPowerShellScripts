@@ -37,7 +37,7 @@
     .OUTPUTS
     None.
 #>
-
+[CmdletBinding()]
 param (
     [Parameter(
         Mandatory = $true
