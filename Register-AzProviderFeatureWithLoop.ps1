@@ -59,12 +59,12 @@ if ($true -eq $RegisterPreviewNSGFeature) {
         Write-Information -MessageData "Preview Feature state is: '$AzProviderFeatureRegistrationState'. Registering."
         Register-AzProviderFeature -ProviderNamespace $ProviderNameSpace -FeatureName $FeatureName
     }
-    elseif ("Pending" -eq $AzProviderFeatureRegistrationState) {
-        Write-Warning -Message "Preview Feature state is: '$AzProviderFeatureRegistrationState'. Please try again in a bit."
-        throw
+    elseif ($AzProviderFeatureRegistrationState -eq "Registered") {
+        Write-Information -MessageData "Preview Feature state is: '$AzProviderFeatureRegistrationState'. Skipping registration."
     }
     else {
-        Write-Information -MessageData "Preview Feature state is: '$AzProviderFeatureRegistrationState'. Skipping registration."
+        Write-Warning -Message "Preview Feature state is: '$AzProviderFeatureRegistrationState'. Please try again in a bit."
+        throw
     }
 
     ######## Loop until the preview feature is registered
