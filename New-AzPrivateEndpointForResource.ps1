@@ -105,7 +105,7 @@ Write-Information -MessageData "Creating the Private Link Service Connection"
 $NewAzPLSC = New-AzPrivateLinkServiceConnection @NewAzPLSCSplat
 
 ### Create a name for the Private Endpoint Azure resource based on the target Azure resource name
-[System.String]$NewAzPEName = [System.String]::Concat($GetAzResource.VaultName, "-PE-01")
+[System.String]$NewAzPEName = [System.String]::Concat($GetAzResource.Name, "-PE-01")
 
 ### Parameter splat for the Private Endpoint cmdlet
 $NewAzPESplat = @{
