@@ -17,7 +17,7 @@ foreach ($Module in $Modules) {
 
     [System.Collections.ArrayList]$ModuleDependencies = @()
 
-    $FindModule.Dependencies | ForEach-Object -Process {
+    $FindModule.Dependencies | Sort-Object -Property Name | ForEach-Object -Process {
         $ModuleDependencies.Add($_) | Out-Null
     }
 
