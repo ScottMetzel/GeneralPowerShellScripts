@@ -57,7 +57,12 @@ param (
             (($_ -split "/").Count -eq 9) -and (($_ -split "/")[1] -eq "subscriptions") -and ([System.Guid]::TryParse(($_ -split "/")[2], [System.Management.Automation.PSReference]([System.Guid]::empty))) -and (($_ -split "/")[3] -eq "resourceGroups") -and (($_ -split "/")[5] -eq "providers")
         }
     )]
-    [System.String]$TargetResourceID
+    [System.String]$TargetResourceID,
+    [Parameter(
+        Mandatory = $true
+    )]
+    [ValidateNotNullOrEmpty()]
+    [System.String]$PrivateEndpointResourceGroupName
 )
 ## Get information stream messages to show, and make sure we stop on error
 $InformationPreference = "Continue"
@@ -68,54 +73,77 @@ Write-Information -MessageData "Deriving Virtual Network name and resource group
 [System.String]$VirtualNetworkResourceGroupName = $VirtualNetworkResourceIDArray[4]
 [System.String]$VirtualNetworkName = $VirtualNetworkResourceIDArray[-1]
 
-## Parameter splat for the get virtual network cmdlet
+# Parameter splat for the get virtual network cmdlet
 [System.Collections.Hashtable]$GetAzVNETSplat = @{
     ResourceGroupName = $VirtualNetworkResourceGroupName
     Name              = $VirtualNetworkName
 }
 
-## Get the Virtual Network
+# Get the Virtual Network
 Write-Information -MessageData "Getting Virtual Network"
 $GetAzVNET = Get-AzVirtualNetwork @GetAzVNETSplat
 
-## Get the Virtual Network subnet
+# Get the Virtual Network subnet
 Write-Information -MessageData "Getting Virtual Network subnet"
 $GetAzVNetSubnet = $GetAzVNET.Subnets | Where-Object -FilterScript { $_.Name -eq $VirtualNetworkSubnetName }
+
+# Get the resource group where the Private Endpoint will be created for sanity
+Write-Information -MessageData "Getting the Resource Group where the Private Endpoint will be created."
+try {
+    $ErrorActionPreference = "Stop"
+
+    Get-AzResourceGroup -Name $PrivateEndpointResourceGroupName | Out-Null
+}
+catch {
+    $_
+    Write-Error -Message "An error ocurred while getting the resource group where the Private Endpoint will be created."
+    throw
+}
 
 # Get the resource to create a private endpoint for
 Write-Information -MessageData "Getting the Azure resource to create a private endpoint for."
 $GetAzResource = Get-AzResource -ResourceId $TargetResourceID
 
-### Get the Group ID for the Azure resource, which we'll need shortly
+# Get the Group ID for the Azure resource, which we'll need shortly
 Write-Information -MessageData "Getting the GroupId for the target Azure resource."
 $GetAzResourceGroupID = (Get-AzPrivateLinkResource -PrivateLinkResourceId $GetAzResource.ResourceId).GroupId
 
-### Create a name for the Private Link Service Connection based on the Azure resource name
+# Create a name for the Private Link Service Connection based on the Azure resource name
 [System.String]$NewAzPLSCName = [System.String]::Concat($GetAzResource.Name, "-PLSC-01")
 
-### Parameter splat for the Private Link Service Connection cmdlet
+# Parameter splat for the Private Link Service Connection cmdlet
 [System.Collections.Hashtable]$NewAzPLSCSplat = @{
     Name                 = $NewAzPLSCName
     PrivateLinkServiceId = $GetAzResource.ResourceId
     GroupId              = $GetAzResourceGroupID
 }
 
-### Now create the Private Link Service Connection
+# Now create the Private Link Service Connection
 Write-Information -MessageData "Creating the Private Link Service Connection"
 $NewAzPLSC = New-AzPrivateLinkServiceConnection @NewAzPLSCSplat
 
-### Create a name for the Private Endpoint Azure resource based on the target Azure resource name
+# Create a name for the Private Endpoint Azure resource based on the target Azure resource name
 [System.String]$NewAzPEName = [System.String]::Concat($GetAzResource.Name, "-PE-01")
 
-### Parameter splat for the Private Endpoint cmdlet
+# Parameter splat for the Private Endpoint cmdlet
 $NewAzPESplat = @{
-    ResourceGroupName            = $GetAzResource.ResourceGroupName
+    ResourceGroupName            = $PrivateEndpointResourceGroupName
     Name                         = $NewAzPEName
     Location                     = $GetAzResource.Location
     Subnet                       = $GetAzVNetSubnet
     PrivateLinkServiceConnection = $NewAzPLSC
 }
 
-### Now create the Private Endpoint
-Write-Information -MessageData "Creating the Private Endpoint"
-New-AzPrivateEndpoint @NewAzPESplat
+# Now create the Private Endpoint
+try {
+    $ErrorActionPreference = "Stop"
+
+    Write-Information -MessageData "Creating the Private Endpoint"
+    New-AzPrivateEndpoint @NewAzPESplat
+}
+catch {
+    $_
+    Write-Error -Message "An error ocurred while creating the Private Endpoint."
+    throw
+}
+Write-Information -MessageData "Private Endpoint created! Exiting."

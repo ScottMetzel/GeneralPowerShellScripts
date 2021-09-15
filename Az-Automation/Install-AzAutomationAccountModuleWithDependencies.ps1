@@ -1,17 +1,20 @@
+[CmdletBinding()]
 param (
     [System.String]$AutomationAccountResourceGroupName,
     [System.String]$AutomationAccountName,
-    [System.String[]]$Modules = @("Az")
+    [System.String[]]$ModuleNames = @("Az")
 )
 $ErrorActionPreference = "Stop"
 $InformationPreference = "Continue"
 
-Write-Information -MessageData "Finding modules..."
 [System.Int32]$c = 1
-[System.Int32]$ModuleCount = $Modules.Count
-foreach ($Module in $Modules) {
+[System.Int32]$ModuleCount = $ModuleNames.Count
+
+Write-Information -MessageData "Entering main module loop."
+foreach ($Module in $ModuleNames) {
     Write-Information -MessageData "Working on module: '$Module'. Module: '$c' of: '$ModuleCount'."
 
+    Write-Information -MessageData "Finding module: '$Module'."
     $FindModule = Find-Module -Name $Module
 
 
