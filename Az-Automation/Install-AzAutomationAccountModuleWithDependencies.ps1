@@ -74,9 +74,9 @@ foreach ($Module in $ModuleNames) {
     }
 
     # Now install the module
-    [System.String]$ModuleName = $Dependency.Name
-    [System.String]$ModuleSourceLocation = $Dependency.RepositorySourceLocation
-    [System.String]$ModuleVersion = $Dependency.Version
+    [System.String]$ModuleName = $FindModule.Name
+    [System.String]$ModuleSourceLocation = $FindModule.RepositorySourceLocation
+    [System.String]$ModuleVersion = $FindModule.Version
     [System.String]$ModuleURI = [System.String]::Concat($ModuleSourceLocation, "/package/", $ModuleName, "/", $ModuleVersion)
     Write-Information -MessageData "Installing module: '$Module'. Module: '$c' of: '$ModuleCount'."
     New-AzAutomationModule -ResourceGroupName $AutomationAccountResourceGroupName -AutomationAccountName $AutomationAccountName -Name $ModuleName -ContentLinkUri $ModuleURI
