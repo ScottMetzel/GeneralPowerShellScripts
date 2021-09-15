@@ -5,7 +5,7 @@ Created With:   Visual Studio Code
 Created On:     September 8, 2021, 8:31 AM
 Created by:     Scott Metzel
 Organization:   -
-Filename:       Install-UpdatesForVMSS.ps1
+Filename:       Install-SyslogForwarderUpdatesInVMSS.ps1
 Version:        0.1
 ===========================================================================
 .DESCRIPTION
@@ -150,7 +150,6 @@ foreach ($Instance in $VMSSInstancesToUpdate) {
     try {
         $ErrorActionPreference = "Stop"
         [System.String]$InstanceName = $Instance.name
-        [System.String]$InstanceID = $Instance.InstanceId
         Write-Information -MessageData "Updating instance: '$InstanceName'. Number: '$c' of: '$VMSSInstancesToUpdateCount' instances."
         Invoke-AzVmssVMRunCommand -VirtualMachineScaleSetVM $Instance -CommandId "RunShellScript" -ScriptPath $ScriptPath
 
