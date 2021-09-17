@@ -25,7 +25,14 @@ param (
         "LastHalf",
         IgnoreCase = $true
     )]
-    [System.String]$UpdateStrategy = "All"
+    [System.String]$UpdateStrategy = "All",
+    [ValidateSet(
+        "ManagedIdentity",
+        "RunAs",
+        "Script",
+        IgnoreCase = $true
+    )]
+    [System.String]$RunMethod = "ManagedIdentity"
 )
 
 $InformationPreference = "Continue"
@@ -57,9 +64,24 @@ foreach ($Module in $ModulesToImport) {
     $c++
 }
 
-# Connect to Azure
-Write-Verbose -Message "Connecting to Azure."
-Connect-AzAccount -ServicePrincipal -Tenant $TenantID -ApplicationId $ApplicationID -CertificateThumbprint $CertificateThumbprint -Verbose
+# Connect to Azure depending on the run method
+switch ($RunMethod) {
+    "ManagedIdentity" {
+        Write-Verbose -Message "Connecting to Azure using a Managed Identity"
+        Connect-AzAccount -Identity
+    }
+    "RunAs" {
+        Write-Verbose -Message "Connecting to Azure using a Service Principal."
+        Connect-AzAccount -ServicePrincipal -Tenant $TenantID -ApplicationId $ApplicationID -CertificateThumbprint $CertificateThumbprint -Verbose
+    }
+    "Script" {
+        Write-Verbose -Message "Not connecting to Azure since this is being run via a script. Assuming connectivity."
+    }
+    default {
+        Write-Error -Message "Unknown connection method specified."
+        throw
+    }
+}
 
 # Get the subscription and set context
 Get-AzSubscription -SubscriptionId $SubscriptionID | Set-AzContext
