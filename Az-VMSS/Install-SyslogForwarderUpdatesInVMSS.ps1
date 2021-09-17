@@ -31,12 +31,34 @@ param (
 $InformationPreference = "Continue"
 $ErrorActionPreference = "Stop"
 
+Write-Verbose -Message "Getting Automation Connection."
 $GetAutomationConnection = Get-AutomationConnection -Name AzureRunAsConnection
-$TenantID = $GetAutomationConnection.$TenantID
-$ApplicationID = $GetAutomationConnection.$ApplicationID
+$TenantID = $GetAutomationConnection.TenantID
+$ApplicationID = $GetAutomationConnection.ApplicationID
 $CertificateThumbprint = $GetAutomationConnection.CertificateThumbprint
 
+# Import modules while suppressing verbose output
+[System.Collections.ArrayList]$ModulesToImport = @(
+    "Az.Accounts",
+    "Az.Compute"
+)
+
+[System.Int32]$c = 1
+[System.Int32]$ModulesToImportCount = $ModulesToImport.Count
+foreach ($Module in $ModulesToImport) {
+    Write-Verbose -Message "Importing module: '$Module'. Module: '$c' of: '$ModulesToImportCount'."
+
+    $OriginalVerbosePreference = $Global:VerbosePreference
+    $Global:VerbosePreference = 'SilentlyContinue'
+
+    Get-Module -Name $Module -ListAvailable | Import-Module | Out-Null
+
+    $Global:VerbosePreference = $OriginalVerbosePreference
+    $c++
+}
+
 # Connect to Azure
+Write-Verbose -Message "Connecting to Azure."
 Connect-AzAccount -ServicePrincipal -Tenant $TenantID -ApplicationId $ApplicationID -CertificateThumbprint $CertificateThumbprint -Verbose
 
 # Get the subscription and set context
@@ -46,15 +68,15 @@ Get-AzSubscription -SubscriptionId $SubscriptionID | Set-AzContext
 [System.Collections.ArrayList]$VMSSInstances = @()
 
 # Get the VMSS Instances
-Write-Information -MessageData "Getting VMSS Instances"
+Write-Verbose -Message "Getting VMSS Instances"
 Get-AzVmssVM -ResourceGroupName $ResourceGroupName -VMScaleSetName $VMSSName | ForEach-Object -Process {
     $VMSSInstances.Add($_) | Out-Null
 }
 
-Write-Information -MessageData "Getting count of VMSS VMs"
+Write-Verbose -Message "Getting count of VMSS VMs"
 [System.Int32]$VMSSInstanceCount = $VMSSInstances.Count
 
-Write-Information -MessageData "Found: '$VMSSInstanceCount' VMSS VMs."
+Write-Verbose -Message "Found: '$VMSSInstanceCount' VMSS VMs."
 
 # Find the first half of the set
 [System.Int32]$VMSSInstanceCountFirstHalf = [math]::floor(($VMSSInstanceCount * 0.5))
@@ -64,7 +86,7 @@ Write-Information -MessageData "Found: '$VMSSInstanceCount' VMSS VMs."
 
 switch ($UpdateStrategy) {
     "All" {
-        Write-Information -MessageData "Update strategy: ""All"" selected."
+        Write-Verbose -Message "Update strategy: ""All"" selected."
         # Since we're patching everything, the selected count equals the count of instances
         [System.Int32]$SelectedVMSSInstanceCount = $VMSSInstanceCount
 
@@ -74,7 +96,7 @@ switch ($UpdateStrategy) {
         }
     }
     "FirstHalf" {
-        Write-Information -MessageData "Update strategy: ""FirstHalf"" selected."
+        Write-Verbose -Message "Update strategy: ""FirstHalf"" selected."
         if ($VMSSInstanceCountFirstHalf -le 0) {
             <#
                 If the calculated first half of the VMSS is 0, we know we have 1 instance in the set,
@@ -92,7 +114,7 @@ switch ($UpdateStrategy) {
         }
     }
     "LastHalf" {
-        Write-Information -MessageData "Update strategy: ""LastHalf"" selected."
+        Write-Verbose -Message "Update strategy: ""LastHalf"" selected."
 
         if ($VMSSInstanceCountFirstHalf -le 0) {
             <#
@@ -124,11 +146,11 @@ switch ($UpdateStrategy) {
 <#
     Now with the selected instances identified, start updating depending on our approach.
 #>
-Write-Information -MessageData "Will update instances from set in Resource Group: '$ResourceGroupName' and VMSS: '$VMSSName'"
+Write-Verbose -Message "Will update instances from set in Resource Group: '$ResourceGroupName' and VMSS: '$VMSSName'"
 $VMSSInstancesToUpdate | ForEach-Object -Process {
     [System.String]$InstanceName = $_.name
 
-    Write-Information -MessageData "$InstanceName"
+    Write-Verbose -Message "$InstanceName"
 }
 
 # Create a simple counter and get the total count of instances to update
@@ -139,18 +161,18 @@ $VMSSInstancesToUpdate | ForEach-Object -Process {
 [System.String]$ScriptToRun = "sudo firewall-cmd --remove-service=syslog&&sudo yum update -y&&nohup sudo shutdown -r 1 > /dev/null 2>&1 &"
 
 # Temporarily write out the script to a file
-Write-Information -MessageData "Temporarily writing script out to a path."
+Write-Verbose -Message "Temporarily writing script out to a path."
 [System.String]$ScriptName = "Install-Updates.sh"
 [System.String]$ScriptPath = [System.String]::Concat(".\", $ScriptName)
 $ScriptToRun | Out-File -FilePath $ScriptPath -Encoding utf8 -Force
 
 # Now start invoking the commands
-Write-Information -MessageData "Updating VMSS instances..."
+Write-Verbose -Message "Updating VMSS instances..."
 foreach ($Instance in $VMSSInstancesToUpdate) {
     try {
         $ErrorActionPreference = "Stop"
         [System.String]$InstanceName = $Instance.name
-        Write-Information -MessageData "Updating instance: '$InstanceName'. Number: '$c' of: '$VMSSInstancesToUpdateCount' instances."
+        Write-Verbose -Message "Updating instance: '$InstanceName'. Number: '$c' of: '$VMSSInstancesToUpdateCount' instances."
         Invoke-AzVmssVMRunCommand -VirtualMachineScaleSetVM $Instance -CommandId "RunShellScript" -ScriptPath $ScriptPath
 
         $c++
@@ -165,7 +187,7 @@ foreach ($Instance in $VMSSInstancesToUpdate) {
     }
 }
 
-Write-Information -MessageData "All done!"
+Write-Verbose -Message "All done!"
 
 # Remove the temporarily written script from the file system on completion.
 Remove-Item -Path $ScriptPath -Force
