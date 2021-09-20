@@ -1,6 +1,43 @@
+#Requires -Modules @{ ModuleName="PowerShellGet"; ModuleVersion="2.0.0.0"}, @{ ModuleName="Az.Automation"; ModuleVersion="1.7.0.0"}
+<#
+    .SYNOPSIS
+    This script adds PowerShell modules to an Azure Automation Account
+
+    .DESCRIPTION
+    This script adds PowerShell modules to an Azure Automation Account, optionally including dependencies. It can also
+    be used to effectively update modules in an account, if modules are already present.
+
+    .NOTES
+    ###################################################################################################################
+    Created With: Microsoft Visual Studio Code
+    Created On: September 15, 2021
+    Author: Scott Metzel
+    Organization: -
+    Filename: Install-AzAutomationAccountModuleWithDependencies.ps1
+
+    Version History:
+    ## Version ##   ## Edited By ## ## Date ##          ## Notes ######################################################
+    0.1             Scott Metzel    September 15, 2021  Initial version
+    ###################################################################################################################
+
+    .EXAMPLE
+    Install-AzAutomationAccountModuleWithDependencies.ps1 -ResourceGroupName "Prod-RG-Operations-01" -AutomationAccountName "Prod-AA-Operations-01" -ModuleNames "Az", "PowerCLI"
+
+    .EXAMPLE
+    Install-AzAutomationAccountModuleWithDependencies.ps1 -ResourceGroupName "Prod-RG-Operations-01" -AutomationAccountName "Prod-AA-Operations-01" -ModuleNames "Az", "PowerCLI" -DependenciesOnly $true
+
+    .EXAMPLE
+    Install-AzAutomationAccountModuleWithDependencies.ps1 -ResourceGroupName "Prod-RG-Operations-01" -AutomationAccountName "Prod-AA-Operations-01" -ModuleNames "Az", "PowerCLI" -SkipDependencies $true
+
+    .INPUTS
+    None. This runbook does not accept inputs from the pipeline.
+
+    .OUTPUTS
+    None.
+#>
 [CmdletBinding()]
 param (
-    [System.String]$AutomationAccountResourceGroupName,
+    [System.String]$ResourceGroupName,
     [System.String]$AutomationAccountName,
     [System.String[]]$ModuleNames = @("Az"),
     [System.Boolean]$DependenciesOnly = $false,
@@ -58,20 +95,28 @@ foreach ($Module in $ModuleNames) {
                 }
 
                 Write-Information -MessageData "Checking if dependent module exists in Automation Account."
-                $GetDependentModuleInAA = Get-AzAutomationModule -ResourceGroupName $AutomationAccountResourceGroupName -AutomationAccountName $AutomationAccountName -Name $ModuleDependencyName -ErrorAction "SilentlyContinue"
+                $GetDependentModuleInAA = Get-AzAutomationModule -ResourceGroupName $ResourceGroupName -AutomationAccountName $AutomationAccountName -Name $ModuleDependencyName -ErrorAction "SilentlyContinue"
 
                 [System.Boolean]$InstallDependentModule = $false
                 if ($GetDependentModuleInAA) {
-                    Write-Information -MessageData "Dependent module found in Automation Account. Parsing version."
-                    [System.Version]$DependentModuleinAAVersion = [System.Version]::Parse($GetDependentModuleInAA.Version)
+                    Write-Information -MessageData "Dependent module found in Automation Account."
 
-                    if ($DepdendentModuleInGalleryVersion -gt $DependentModuleinAAVersion) {
-                        Write-Information -MessageData "Version found in gallery: '$DepdendentModuleInGalleryVersion' is higher than the one already in the Automation Account: '$DependentModuleinAAVersion'."
+                    if ($GetDependentModuleInAA.ProvisioningState -in @("Failed")) {
+                        Write-Warning -Message "Found module is in failed state in Automation Account. Will attempt to reinstall."
                         [System.Boolean]$InstallDependentModule = $true
                     }
                     else {
-                        Write-Information -MessageData "Version found in gallery: '$DepdendentModuleInGalleryVersion' is not higher than the one already in the Automation Account: '$DependentModuleinAAVersion'."
-                        [System.Boolean]$InstallDependentModule = $false
+                        Write-Information -MessageData "Parsing version of module in Automation Account."
+                        [System.Version]$DependentModuleinAAVersion = [System.Version]::Parse($GetDependentModuleInAA.Version)
+
+                        if ($DepdendentModuleInGalleryVersion -gt $DependentModuleinAAVersion) {
+                            Write-Information -MessageData "Version found in gallery: '$DepdendentModuleInGalleryVersion' is higher than the one already in the Automation Account: '$DependentModuleinAAVersion'."
+                            [System.Boolean]$InstallDependentModule = $true
+                        }
+                        else {
+                            Write-Information -MessageData "Version found in gallery: '$DepdendentModuleInGalleryVersion' is not higher than the one already in the Automation Account: '$DependentModuleinAAVersion'."
+                            [System.Boolean]$InstallDependentModule = $false
+                        }
                     }
                 }
                 else {
@@ -88,19 +133,33 @@ foreach ($Module in $ModuleNames) {
                     try {
                         $ErrorActionPreference = "Stop"
                         Write-Information -MessageData "Installing dependent module."
-                        New-AzAutomationModule -ResourceGroupName $AutomationAccountResourceGroupName -AutomationAccountName $AutomationAccountName -Name $ModuleDependencyName -ContentLinkUri $ModuleDependencyURI
+                        New-AzAutomationModule -ResourceGroupName $ResourceGroupName -AutomationAccountName $AutomationAccountName -Name $ModuleDependencyName -ContentLinkUri $ModuleDependencyURI
 
+                        # Set a counter for reinstallation attempts. If the counter goes above a value, bail.
+                        [System.Int32]$r = 1
+                        [System.Int32]$rMax = 5
                         Write-Information -MessageData "Checking module dependency installation state."
                         do {
-                            $GetAzAutomationModuleDependencyInAccount = Get-AzAutomationModule -ResourceGroupName $AutomationAccountResourceGroupName -AutomationAccountName $AutomationAccountName -Name $ModuleDependencyName -ErrorAction SilentlyContinue
+                            $GetAzAutomationModuleDependencyInAccount = Get-AzAutomationModule -ResourceGroupName $ResourceGroupName -AutomationAccountName $AutomationAccountName -Name $ModuleDependencyName -ErrorAction SilentlyContinue
 
                             [System.String]$ModuleDependencyProvisioningState = $GetAzAutomationModuleDependencyInAccount.ProvisioningState
-
                             [System.Boolean]$ModuleDependencyInstalled = $false
+
+                            if ($r -gt $rMax) {
+                                Write-Error -Message "Module dependency: '$ModuleDependencyName' has failed to install: '$r' times, which is greater than the limit of: '$rMax'. Please investigate and try again."
+                                throw
+                            }
+
                             if ($ModuleDependencyProvisioningState -notin @("Created", "Succeeded")) {
                                 Write-Information -MessageData "Module dependency: '$ModuleDependencyName' is not installed. State: '$ModuleDependencyProvisioningState'. Rechecking in 5 seconds."
                                 [System.Boolean]$ModuleDependencyInstalled = $false
                                 Start-Sleep -Seconds 5
+                            }
+                            elseif ($ModuleDependencyProvisioningState -in @("Failed")) {
+                                Write-Warning -Message "Found module is in failed state in Automation Account. Will attempt to reinstall. Reinstall attempt: '$r' of: '$rMax'."
+                                New-AzAutomationModule -ResourceGroupName $ResourceGroupName -AutomationAccountName $AutomationAccountName -Name $ModuleDependencyName -ContentLinkUri $ModuleDependencyURI
+
+                                $r++
                             }
                             else {
                                 Write-Information -MessageData "Module dependency: '$ModuleDependencyName' is installed. State: '$ModuleDependencyProvisioningState'. Moving to next module dependency."
@@ -129,7 +188,7 @@ foreach ($Module in $ModuleNames) {
 
     if ($false -eq $DependenciesOnly) {
         Write-Information -MessageData "Checking if module exists in Automation Account."
-        $GetModuleInAA = Get-AzAutomationModule -ResourceGroupName $AutomationAccountResourceGroupName -AutomationAccountName $AutomationAccountName -Name $Module -ErrorAction "SilentlyContinue"
+        $GetModuleInAA = Get-AzAutomationModule -ResourceGroupName $ResourceGroupName -AutomationAccountName $AutomationAccountName -Name $Module -ErrorAction "SilentlyContinue"
 
         [System.Boolean]$InstallModule = $false
         if ($GetModuleInAA) {
@@ -162,19 +221,34 @@ foreach ($Module in $ModuleNames) {
                 $ErrorActionPreference = "Stop"
 
                 Write-Information -MessageData "Installing module: '$Module'. Module: '$c' of: '$ModuleCount'."
-                New-AzAutomationModule -ResourceGroupName $AutomationAccountResourceGroupName -AutomationAccountName $AutomationAccountName -Name $ModuleName -ContentLinkUri $ModuleURI
+                New-AzAutomationModule -ResourceGroupName $ResourceGroupName -AutomationAccountName $AutomationAccountName -Name $ModuleName -ContentLinkUri $ModuleURI
+
+                # Set a counter for reinstallation attempts. If the counter goes above a value, bail.
+                [System.Int32]$r = 1
+                [System.Int32]$rMax = 5
 
                 Write-Information -MessageData "Checking module installation state."
                 do {
-                    $GetAzAutomationModuleInAccount = Get-AzAutomationModule -ResourceGroupName $AutomationAccountResourceGroupName -AutomationAccountName $AutomationAccountName -Name $ModuleName -ErrorAction SilentlyContinue
+                    $GetAzAutomationModuleInAccount = Get-AzAutomationModule -ResourceGroupName $ResourceGroupName -AutomationAccountName $AutomationAccountName -Name $ModuleName -ErrorAction SilentlyContinue
 
                     [System.String]$ModuleProvisioningState = $GetAzAutomationModuleInAccount.ProvisioningState
-
                     [System.Boolean]$ModuleInstalled = $false
+
+                    if ($r -gt $rMax) {
+                        Write-Error -Message "Module: '$ModuleName' has failed to install: '$r' times, which is greater than the limit of: '$rMax'. Please investigate and try again."
+                        throw
+                    }
+
                     if ($ModuleProvisioningState -notin @("Created", "Succeeded")) {
                         Write-Information -MessageData "Module: '$ModuleName' is not installed. State: '$ModuleProvisioningState'. Rechecking in 5 seconds."
                         [System.Boolean]$ModuleInstalled = $false
                         Start-Sleep -Seconds 5
+                    }
+                    elseif ($ModuleProvisioningState -in @("Failed")) {
+                        Write-Warning -Message "Found module is in failed state in Automation Account. Will attempt to reinstall. Reinstall attempt: '$r' of: '$rMax'."
+                        New-AzAutomationModule -ResourceGroupName $ResourceGroupName -AutomationAccountName $AutomationAccountName -Name $ModuleName -ContentLinkUri $ModuleURI
+
+                        $r++
                     }
                     else {
                         Write-Information -MessageData "Module: '$ModuleName' is installed. State: '$ModuleProvisioningState'. Moving to next module or exiting."
