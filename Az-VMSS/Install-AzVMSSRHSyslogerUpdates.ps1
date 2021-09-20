@@ -79,7 +79,7 @@ param (
     [ValidateScript(
         {
             $_ | ForEach-Object -Process {
-                if (($_.Length -lt 1) -or ($_.Length -gt 90)) {
+                if (($_.Length -lt 1) -or ($_.Length -gt 64)) {
                     $false
                 }
                 else {
