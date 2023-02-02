@@ -111,7 +111,7 @@ param (
         IgnoreCase = $true
     )]
     [ValidateNotNullOrEmpty()]
-    [System.String]$RunMethod = "RunAs"
+    [System.String]$RunMethod = "ManagedIdentity"
 )
 
 $InformationPreference = "Continue"
