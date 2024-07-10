@@ -14,6 +14,18 @@ if ($Force -and -not $Confirm) {
     $ConfirmPreference = 'None'
 }
 
+# Date time check to avoid switching over immediately
+[System.String]$NewSwitchoverDateString = $NewSwitchoverDate.ToString()
+[System.DateTime]$Now = Get-Date
+[System.String]$NowString = $Now.ToString()
+if ($NewSwitchoverDate -gt $Now) {
+    Write-Information -MessageData "New switchover date: '$NewSwitchoverDateString' is greater than now: '$NowString'. Moving on."
+}
+else {
+    Write-Warning -Message "The new switchover date time is not greater than the current date time. Please specify a date time greater than now and try again."
+    throw
+}
+
 # Get the HCX Mobility Group
 Write-Information -MessageData "Getting HCX Mobility Group: '$MobilityGroupName'."
 $GetHCXMobilityGroup = Get-HCXMobilityGroup -Name $MobilityGroupName -ErrorAction SilentlyContinue
@@ -26,7 +38,6 @@ else {
 }
 
 # With the group found, set the scheduled end time, aka switchover date.
-[System.String]$NewSwitchoverDateString = $NewSwitchoverDate.ToString()
 Write-Information -MessageData "Setting HCX Mobility Group switchover date to: '$NewSwitchoverDateString'."
 try {
     $ErrorActionPreference = "Stop"
