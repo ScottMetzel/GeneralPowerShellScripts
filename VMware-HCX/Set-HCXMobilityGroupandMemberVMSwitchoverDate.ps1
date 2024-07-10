@@ -1,10 +1,18 @@
-[CmdletBinding()]
+[CmdletBinding(
+    SupportsShouldProcess,
+    ConfirmImpact = 'High'
+)]
 param (
     [System.String]$MobilityGroupName,
     [System.DateTime]$NewSwitchoverDate = (Get-Date).AddMonths(1),
-    [switch]$Recursive
+    [Switch]$Recursive,
+    [Switch]$Force
 )
 $InformationPreference = "Continue"
+
+if ($Force -and -not $Confirm) {
+    $ConfirmPreference = 'None'
+}
 
 # Get the HCX Mobility Group
 Write-Information -MessageData "Getting HCX Mobility Group: '$MobilityGroupName'."
@@ -22,7 +30,9 @@ else {
 Write-Information -MessageData "Setting HCX Mobility Group switchover date to: '$NewSwitchoverDateString'."
 try {
     $ErrorActionPreference = "Stop"
-    Set-HCXMobilityGroupConfiguration -MobilityGroup $GetHCXMobilityGroup -ScheduleEndTime $NewSwitchoverDate
+    if ($PSCmdlet.ShouldProcess("Set schedule end time: $NewSwitchoverDate", "$MobilityGroupName", "Set-HCXMobilityGroupConfiguration")) {
+        Set-HCXMobilityGroupConfiguration -MobilityGroup $GetHCXMobilityGroup -ScheduleEndTime $NewSwitchoverDate
+    }
 }
 catch {
     $_
@@ -56,7 +66,9 @@ if ($Recursive -and ($MobilityGroupMigrationsCount -gt 0)) {
 
         try {
             $ErrorActionPreference = "Continue"
-            Set-HCXMigration -Migration $HCXMigration -ScheduleEndTime $NewSwitchoverDate
+            if ($PSCmdlet.ShouldProcess("Set schedule end time: $NewSwitchoverDate", "$VMName", "Set-HCXMigration")) {
+                Set-HCXMigration -Migration $HCXMigration -ScheduleEndTime $NewSwitchoverDate
+            }
         }
         catch {
             $_
